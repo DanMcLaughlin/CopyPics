@@ -10,3 +10,7 @@ such as JPG. Basically works as a LightRoom import replacement but this
 can actually handle movie files correctly. It uses exiftool for pictures
 to determine the time, and uses a timestamp for movies. The pictures
 are imported to a particular directory, in my case a remote share. 
+
+Filenames created are of the form YYYYMMDD-HHMMSS.XYZ, multiple pictures
+taken in one second are of the form YYYYMMDD-HHMMSS_N.XYZ, where _N goes
+_1, _2, etc. 
