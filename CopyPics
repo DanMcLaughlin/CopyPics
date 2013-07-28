@@ -1,0 +1,263 @@
+#!/bin/sh
+
+A3000IS=/Volumes/3000IS
+FUJI=/Volumes/FUJI
+FIVED=/Volumes/EOS_DIGITAL
+CANON=/Volumes/CANON_DC
+CANONM=/Volumes/EOS_DIGITAL
+
+if [ -d "/Volumes/Media/LifeBlog" ]; then
+  echo "Found Media directory"
+else
+  echo "Need to mount Procurator"
+  exit 1
+fi
+
+YEAR=`date "+%Y"`
+MONTH=`date "+%m"`
+DAY=`date "+%d"`
+
+if [ -d "$A3000IS"/DCIM/ ]; then
+   SRC="$A3000IS"/DCIM/
+elif [ -d "$FUJI"/DCIM/ ]; then
+   SRC="$FUJI"/DCIM/
+elif [ -d "$CANONM"/DCIM/EOSMISC ]; then
+   SRC="$CANONM"/DCIM/
+elif [ -d "$FIVED"/MISC ]; then
+   SRC="$FIVED"/DCIM/
+elif [ -d "$CANON"/DCIM/ ]; then
+   SRC="$CANON"/DCIM/
+elif [ -d ~/Pictures/Import/DCIM ]; then
+   SRC=~/Pictures/Import/DCIM
+else
+  echo "No pictures found"
+  exit 1
+fi
+
+echo "Importing pictures to /Volumes/Media"
+
+DIRS=`ls -l $SRC | egrep '^d' | awk '{print $9}' | grep -v CANONMSC`  
+
+APP="/Applications/Adobe DNG Converter.app/Contents/MacOS/Adobe DNG Converter" 
+DIR=/Volumes/Media/Pictures/$YEAR/
+
+for d in $DIRS; do
+  for f in $(ls $SRC/$d); do
+     filename=$(basename "$f")
+     extension="${filename##*.}"
+     filename="${filename%.*}"
+     
+     #echo "Processing $f"
+     if [ $extension = "THM" -o $extension = "MVI" -o $extension = "MOV" ]; then
+           MODDATE=$(stat -f "%m%t%SB" $SRC/$d/$f | head -3 | cut -f2- | sed -e 's/[ ][ ]*/ /g')
+        #         echo $MODDATE
+           FILENAME=$(echo "$MODDATE" | sed -e 's/[ ][ ]*/_/g')
+        #         echo $FILENAME
+           # Now need to parse out the date
+           SHORTFILENAME=$(echo "$MODDATE" | cut -f 1,2,3,4,5 -d " " | sed -e 's/[ ][ ]*/_/g' | sed -e 's/[:]/-/g')
+        #         echo $SHORTFILENAME
+           YEAR=$(echo "$MODDATE" | cut -f 4,5 -d " ")
+        #         echo $YEAR
+           MONTH=$(echo "$MODDATE" | cut -f 1 -d " ")
+        #         echo $MONTH
+           DAY=$(echo "$MODDATE" | cut -f 2 -d " ")
+        #         echo $DAY
+           TIME=$(echo "$MODDATE" | cut -f 3 -d " " | sed -e 's/[:]//g')
+        #         echo $TIME
+
+           case "$MONTH" in
+             "Jan")  MONTH=01
+               ;;
+             "Feb")  MONTH=02
+               ;;
+             "Mar")  MONTH=03
+               ;;
+             "Apr")  MONTH=04
+               ;;
+             "May")  MONTH=05
+               ;;
+             "Jun")  MONTH=06
+               ;;
+             "Jul")  MONTH=07
+               ;;
+             "Aug")  MONTH=08
+               ;;
+             "Sep")  MONTH=09
+               ;;
+             "Oct")  MONTH=10
+               ;;
+             "Nov")  MONTH=11
+               ;;
+             "Dec")  MONTH=12
+               ;;
+             *) echo "Error Month"
+                exit
+               ;;
+           esac
+           case "$DAY" in
+             "1")  DAY=01
+               ;;
+             "2")  DAY=02
+               ;;
+             "3")  DAY=03
+               ;;
+             "4")  DAY=04
+               ;;
+             "5")  DAY=05
+               ;;
+             "6")  DAY=06
+               ;;
+             "7")  DAY=07
+               ;;
+             "8")  DAY=08
+               ;;
+             "9")  DAY=09
+               ;;
+             *)
+               ;;
+           esac
+     elif [ $extension = "CR2" -o $extension = "CR1"  -o $extension = "CR3" -o $extension = "CR" ]; then
+           MODDATE=$(exiflist -o l $SRC/$d/$f | cut -f6 -d ',')
+        #         echo $MODDATE
+           FILENAME=$(echo "$MODDATE" | sed -e 's/[ ][ ]*/-/g' | sed -e 's/[:]//g')
+        #         echo $FILENAME
+           # Now need to parse out the date
+           SHORTFILENAME=$(echo "$MODDATE" | cut -f 1,2,3,4,5 -d " " | sed -e 's/[ ][ ]*/_/g' | sed -e 's/[:]/-/g')
+        #         echo $SHORTFILENAME
+           YEAR=$(echo "$MODDATE" | cut -f 1 -d ":")
+        #         echo $YEAR
+           MONTH=$(echo "$MODDATE" | cut -f 2 -d ":")
+        #         echo $MONTH
+           DAY=$(echo "$MODDATE" | cut -f 3 -d ":" | cut -f 1 -d " ")
+        #         echo $DAY
+           TIME=$(echo "$MODDATE" | cut -f 2 -d " " | sed -e 's/[:]//g')
+        #         echo $TIME
+      fi
+
+      if [ ! -d /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY ]; then
+        echo "Creating /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY"
+        mkdir -p /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY
+      fi
+
+      if [ $extension = "JPG" -o $extension = "jpg" -o $extension = "THM" -o $extension = "MVI" -o $extension = "MOV" ]; then
+        keepgoing="true"
+        digit=""
+        counter=$(expr 0)
+        while [ $keepgoing = "true" ]; do
+          if [ -f "/Volumes/Media/Pictures/$YEAR/$MONTH/$DAY/$YEAR$MONTH$DAY-$TIME$digit.$extension" ]; then
+            let counter+=1
+            digit="_$counter"
+          else 
+            keepgoing="false"
+          fi
+        done
+        echo "Copying    $f to /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY/$YEAR$MONTH$DAY-$TIME$digit.$extension"
+        cp $SRC/$d/$f /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY/$YEAR$MONTH$DAY-$TIME$digit.$extension
+        chmod -x /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY/$YEAR$MONTH$DAY-$TIME$digit.$extension
+      elif [ $extension = "CR2" -o $extension = "CR1"  -o $extension = "CR3" -o $extension = "CR" ]; then
+        echo "Converting $f to /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY/$YEAR$MONTH$DAY-$TIME.dng"
+        "$APP" -d /Volumes/Media/Pictures/$YEAR/$MONTH/$DAY/ -o $YEAR$MONTH$DAY-$TIME.dng $SRC/$d/$f
+      fi
+   done
+   echo " Done Converting"
+
+done
+
+echo "Clearing imported pictures from card"
+
+if [ -d "$A3000IS"/DCIM/ ]; then
+   echo "Found the following Fuji pictures: $A3000IS/DCIM/" 
+   ls "$A3000IS"/DCIM/*
+   echo 
+   /bin/echo -n "Delete directory and files (y/n)? "
+
+   read input
+
+   if [ "${input}" == "y" ]; then
+      echo "Deleting files"
+      rm -vfr "$A3000IS"/DCIM/*
+      diskutil unmountDisk "$A3000IS"
+   fi
+   exit
+fi
+
+
+if [ -d "$CANONM"/DCIM/EOSMISC ]; then
+   echo "Found the following EOS M pictures: $CANONM/DCIM/"
+   ls "$CANONM"/DCIM/1*
+   echo 
+   /bin/echo -n "Delete directory and files (y/n)? "
+
+   read input
+
+   if [ "${input}" == "y" ]; then
+      echo "Deleting files"
+      rm -vfr "$CANONM"/DCIM/1*
+      diskutil unmountDisk "$CANONM"
+   fi
+   exit
+fi
+
+
+if [ -d "$FIVED"/DCIM/ ]; then
+   echo "Found the following 5D pictures: $FIVED/DCIM/"
+   ls "$FIVED"/DCIM/*
+   echo 
+   /bin/echo -n "Delete directory and files (y/n)? "
+
+   read input
+
+   if [ "${input}" == "y" ]; then
+      echo "Deleting files"
+      rm -vfr "$FIVED"/DCIM/*
+      diskutil unmountDisk "$FIVED"
+   fi
+   exit
+fi
+
+if [ -d "$CANON"/DCIM/ ]; then
+   echo "Found the following G12/S100 pictures: $CANON/DCIM/"
+   ls "$CANON"/DCIM/1*
+   echo 
+   /bin/echo -n "Delete directory and files (y/n)? "
+
+   read input
+
+   if [ "${input}" == "y" ]; then
+      echo "Deleting files"
+      rm -vfr "$CANON"/DCIM/1*
+      diskutil unmountDisk "$CANON"
+   fi
+   exit
+fi
+
+if [ -d "$FUJI"/DCIM/ ]; then
+   echo "Found the following Fuji pictures: $FUJI/DCIM/"
+   ls "$FUJI"/DCIM/*
+   echo 
+   /bin/echo -n "Delete directory and files (y/n)? "
+
+   read input
+
+   if [ "${input}" == "y" ]; then
+      echo "Deleting files"
+      rm -vfr "$FUJI"/DCIM/1*
+      diskutil unmountDisk "$FUJI"
+   fi
+   exit
+fi
+
+if [ -d ~/Pictures/Import/DCIM ]; then
+   echo "Found the following hard drive pictures: ~/Pictures/Import/DCIM"
+   ls ~/Pictures/Import/DCIM*
+   echo 
+   /bin/echo -n "Delete directory and files (y/n)? "
+
+   read input
+
+   if [ "${input}" == "y" ]; then
+      echo "Deleting files"
+      rm -vfr ~/Pictures/Import/DCIM
+   fi
+   exit
+fi
